@@ -9,7 +9,7 @@ const STORAGE_KEY = 'todolist_app_items_v1';
 const THEME_KEY = 'todolist_app_theme';
 
 // Supabase 클라우드 데이터베이스 설정 (직접 REST API 연동으로 100% 신뢰성 보장)
-const SUPABASE_URL = 'https://dtrkfaaedxgaaupkgelh.supabase.co';
+const SUPABASE_URL = 'https://dtrkfaaedxgaauwkgelh.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_XAHWlQ2EAjQX_GUgEDo4tg_Ry1emuWW';
 
 const supabaseHeaders = {
