@@ -7,15 +7,20 @@
 // --- 기본 데이터 및 상태 관리 ---
 const STORAGE_KEY = 'todolist_app_items_v1';
 const THEME_KEY = 'todolist_app_theme';
+const AUTH_STORAGE_KEY = 'todolist_auth_session_v1';
+
+let currentSession = null; // { access_token, user: { id, email }, refresh_token }
+let authMode = 'login'; // 'login' | 'signup'
 
 // Supabase 환경 변수 로드 (1. 로컬 env.js -> 2. Vercel 서버리스 /api/config -> 3. 오프라인 로컬 모드)
 let SUPABASE_URL = (window.ENV && window.ENV.SUPABASE_URL) || '';
 let SUPABASE_KEY = (window.ENV && window.ENV.SUPABASE_KEY) || '';
 
 function getSupabaseHeaders() {
+  const token = (currentSession && currentSession.access_token) ? currentSession.access_token : SUPABASE_KEY;
   return {
     'apikey': SUPABASE_KEY,
-    'Authorization': `Bearer ${SUPABASE_KEY}`,
+    'Authorization': `Bearer ${token}`,
     'Content-Type': 'application/json',
     'Prefer': 'return=representation'
   };
@@ -103,6 +108,24 @@ let editingTodoId = null;
 let currentModalSubtasks = [];
 
 // --- DOM 요소 캐싱 ---
+const authContainer = document.getElementById('authContainer');
+const todoAppContainer = document.getElementById('todoAppContainer');
+const authTitle = document.getElementById('authTitle');
+const authSubtitle = document.getElementById('authSubtitle');
+const authTabLogin = document.getElementById('authTabLogin');
+const authTabSignup = document.getElementById('authTabSignup');
+const authAlert = document.getElementById('authAlert');
+const authForm = document.getElementById('authForm');
+const authEmail = document.getElementById('authEmail');
+const authPassword = document.getElementById('authPassword');
+const authSubmitBtn = document.getElementById('authSubmitBtn');
+const authSubmitBtnText = document.getElementById('authSubmitBtnText');
+
+const userHeaderSection = document.getElementById('userHeaderSection');
+const userEmailBadge = document.getElementById('userEmailBadge');
+const userEmailText = document.getElementById('userEmailText');
+const logoutBtn = document.getElementById('logoutBtn');
+
 const dbStatusBadge = document.getElementById('dbStatusBadge');
 const currentDateText = document.getElementById('currentDateText');
 const themeToggleBtn = document.getElementById('themeToggleBtn');
@@ -154,12 +177,187 @@ const modalSubtaskList = document.getElementById('modalSubtaskList');
 const closeModalBtn = document.getElementById('closeModalBtn');
 const cancelModalBtn = document.getElementById('cancelModalBtn');
 
+// --- 인증(Auth) 상태 및 세션 관리 ---
+function loadSession() {
+  const raw = localStorage.getItem(AUTH_STORAGE_KEY);
+  if (raw) {
+    try {
+      currentSession = JSON.parse(raw);
+    } catch (e) {
+      currentSession = null;
+    }
+  }
+  updateAuthUI();
+}
+
+function saveSession(session) {
+  currentSession = session;
+  if (session) {
+    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
+  } else {
+    localStorage.removeItem(AUTH_STORAGE_KEY);
+  }
+  updateAuthUI();
+}
+
+function updateAuthUI() {
+  const isLoggedIn = Boolean(currentSession && currentSession.user);
+  if (isLoggedIn) {
+    authContainer.classList.add('hidden');
+    todoAppContainer.classList.remove('hidden');
+    userHeaderSection.classList.remove('hidden');
+    userHeaderSection.classList.add('flex');
+    userEmailText.textContent = currentSession.user.email || '사용자';
+  } else {
+    authContainer.classList.remove('hidden');
+    todoAppContainer.classList.add('hidden');
+    userHeaderSection.classList.add('hidden');
+    userHeaderSection.classList.remove('flex');
+    todos = [];
+    render();
+  }
+}
+
+function switchAuthMode(mode) {
+  authMode = mode;
+  hideAuthAlert();
+  if (mode === 'signup') {
+    authTitle.textContent = '투두리스트 회원가입';
+    authSubtitle.textContent = '이메일과 비밀번호로 간편하게 가입하세요.';
+    authSubmitBtnText.textContent = '회원가입하기';
+    authTabSignup.className = 'flex-1 py-1.5 text-xs font-bold rounded-lg transition bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs';
+    authTabLogin.className = 'flex-1 py-1.5 text-xs font-semibold rounded-lg transition text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white';
+  } else {
+    authTitle.textContent = '투두리스트 로그인';
+    authSubtitle.textContent = '로그인하여 나만의 안전한 클라우드 할 일을 관리하세요.';
+    authSubmitBtnText.textContent = '로그인하기';
+    authTabLogin.className = 'flex-1 py-1.5 text-xs font-bold rounded-lg transition bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs';
+    authTabSignup.className = 'flex-1 py-1.5 text-xs font-semibold rounded-lg transition text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white';
+  }
+}
+
+function showAuthAlert(type, message) {
+  if (!authAlert) return;
+  authAlert.classList.remove('hidden');
+  
+  let icon = '';
+  let colorClasses = '';
+
+  if (type === 'error') {
+    colorClasses = 'bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800/40';
+    icon = '<svg class="w-4 h-4 shrink-0 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>';
+  } else if (type === 'success') {
+    colorClasses = 'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/40';
+    icon = '<svg class="w-4 h-4 shrink-0 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>';
+  } else {
+    colorClasses = 'bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/40';
+    icon = '<svg class="w-4 h-4 shrink-0 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>';
+  }
+
+  authAlert.className = `mb-4 p-3 rounded-xl text-xs flex items-start gap-2 ${colorClasses}`;
+  authAlert.innerHTML = `${icon}<span>${escapeHTML(message)}</span>`;
+}
+
+function hideAuthAlert() {
+  if (authAlert) authAlert.classList.add('hidden');
+}
+
+// 회원가입 처리
+async function handleSignUp(email, password) {
+  showAuthAlert('info', '회원가입 처리 중...');
+  authSubmitBtn.disabled = true;
+
+  try {
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/signup`, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ email, password })
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.msg || data.error_description || data.message || '회원가입에 실패했습니다.');
+    }
+
+    if (data.session) {
+      saveSession(data.session);
+      showAuthAlert('success', '가입 및 로그인이 완료되었습니다!');
+      loadTodos();
+    } else if (data.access_token) {
+      saveSession(data);
+      showAuthAlert('success', '가입 및 로그인이 완료되었습니다!');
+      loadTodos();
+    } else {
+      // 이메일 인증 링크 확인 필요 시
+      showAuthAlert('info', '회원가입이 완료되었습니다! 가입하신 이메일의 인증 링크를 확인하신 후 로그인해 주세요.');
+      switchAuthMode('login');
+      authPassword.value = '';
+    }
+  } catch (err) {
+    showAuthAlert('error', err.message || '회원가입 중 오류가 발생했습니다.');
+  } finally {
+    authSubmitBtn.disabled = false;
+  }
+}
+
+// 로그인 처리
+async function handleSignIn(email, password) {
+  showAuthAlert('info', '로그인 확인 중...');
+  authSubmitBtn.disabled = true;
+
+  try {
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ email, password })
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      const msg = data.error_description || data.msg || data.message || '';
+      if (msg.includes('Invalid login credentials') || msg.includes('invalid_grant')) {
+        throw new Error('이메일 또는 비밀번호가 올바르지 않습니다.');
+      } else if (msg.includes('Email not confirmed')) {
+        throw new Error('이메일 인증이 완료되지 않았습니다. 메일함을 확인해 주세요.');
+      }
+      throw new Error(msg || '로그인에 실패했습니다.');
+    }
+
+    saveSession(data);
+    hideAuthAlert();
+    authEmail.value = '';
+    authPassword.value = '';
+    loadTodos();
+  } catch (err) {
+    showAuthAlert('error', err.message || '로그인 중 오류가 발생했습니다.');
+  } finally {
+    authSubmitBtn.disabled = false;
+  }
+}
+
+// 로그아웃 처리
+function handleSignOut() {
+  if (confirm('정말 로그아웃 하시겠습니까?')) {
+    saveSession(null);
+    updateDbBadge('connected', '로그아웃됨');
+  }
+}
+
 // --- 초기화 함수 ---
 async function init() {
   initDateDisplay();
   initTheme();
   await loadConfig();
-  loadTodos();
+  loadSession();
+  if (currentSession && currentSession.user) {
+    loadTodos();
+  }
   setupEventListeners();
   setupSupabaseRealtime();
   render();
@@ -244,7 +442,7 @@ function rowToTodo(row) {
 }
 
 function todoToRow(todo) {
-  return {
+  const row = {
     id: todo.id,
     title: todo.title,
     completed: Boolean(todo.completed),
@@ -255,6 +453,10 @@ function todoToRow(todo) {
     subtasks: todo.subtasks || [],
     completed_at: todo.completedAt || null
   };
+  if (currentSession && currentSession.user) {
+    row.user_id = currentSession.user.id;
+  }
+  return row;
 }
 
 function updateDbBadge(status, text) {
@@ -280,29 +482,41 @@ function updateDbBadge(status, text) {
   }
 }
 
-// 로컬 스토리지 로드 / 저장 (캐시 역할)
+// 로컬 스토리지 로드 / 저장 (사용자별 개별 캐시)
 function loadTodos() {
-  const stored = localStorage.getItem(STORAGE_KEY);
+  if (!currentSession || !currentSession.user) {
+    todos = [];
+    render();
+    return;
+  }
+
+  const userCacheKey = `${STORAGE_KEY}_${currentSession.user.id}`;
+  const stored = localStorage.getItem(userCacheKey);
   if (stored) {
     try {
       todos = JSON.parse(stored);
     } catch (e) {
-      todos = [...defaultTodos];
+      todos = [];
     }
   } else {
-    todos = [...defaultTodos];
+    todos = [];
   }
+  render();
 
   // Supabase 클라우드 데이터 비동기 양방향 동기화
   fetchFromSupabase();
 }
 
 function saveTodos() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(todos));
+  if (currentSession && currentSession.user) {
+    const userCacheKey = `${STORAGE_KEY}_${currentSession.user.id}`;
+    localStorage.setItem(userCacheKey, JSON.stringify(todos));
+  }
 }
 
-// Supabase 클라우드에서 최신 할 일 목록 가져오기 & 로컬 미등록 항목 자동 업로드
+// Supabase 클라우드에서 로그인한 사용자의 할 일 목록 가져오기
 async function fetchFromSupabase() {
+  if (!currentSession || !currentSession.user) return;
   if (!SUPABASE_URL || !SUPABASE_KEY) {
     updateDbBadge('error', '오프라인(로컬 모드)');
     return;
@@ -322,32 +536,9 @@ async function fetchFromSupabase() {
     }
 
     const remoteRows = await res.json();
-    const remoteTodos = remoteRows.map(rowToTodo);
-
-    // 로컬에 이미 작성되어 있는데 클라우드에 아직 안 올라간 항목이 있다면 클라우드로 즉시 업로드!
-    const remoteIdSet = new Set(remoteTodos.map(t => t.id));
-    const unsyncedLocal = todos.filter(t => !remoteIdSet.has(t.id));
-
-    if (unsyncedLocal.length > 0) {
-      for (const localItem of unsyncedLocal) {
-        try {
-          await fetch(`${SUPABASE_URL}/rest/v1/todos`, {
-            method: 'POST',
-            headers: getSupabaseHeaders(),
-            body: JSON.stringify(todoToRow(localItem))
-          });
-          remoteTodos.unshift(localItem);
-        } catch (e) {
-          console.error('로컬 항목 동기화 에러:', e);
-        }
-      }
-    }
-
-    if (remoteTodos.length > 0) {
-      todos = remoteTodos;
-      saveTodos();
-      render();
-    }
+    todos = remoteRows.map(rowToTodo);
+    saveTodos();
+    render();
 
     updateDbBadge('connected', '클라우드 연동됨');
   } catch (err) {
@@ -369,7 +560,7 @@ function setupSupabaseRealtime() {
 
 // 새 할 일 등록
 async function addTodo(title, dueDate, priority, category) {
-  if (!title.trim()) return;
+  if (!title.trim() || !currentSession || !currentSession.user) return;
 
   const newTodo = {
     id: 'todo_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
@@ -769,6 +960,25 @@ function renderModalSubtasks() {
 
 // --- 이벤트 리스너 세팅 ---
 function setupEventListeners() {
+  // 0. 회원가입 / 로그인 탭 & 폼 제출 & 로그아웃
+  authTabLogin.addEventListener('click', () => switchAuthMode('login'));
+  authTabSignup.addEventListener('click', () => switchAuthMode('signup'));
+
+  authForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = authEmail.value.trim();
+    const pw = authPassword.value;
+    if (!email || !pw) return;
+
+    if (authMode === 'login') {
+      await handleSignIn(email, pw);
+    } else {
+      await handleSignUp(email, pw);
+    }
+  });
+
+  logoutBtn.addEventListener('click', handleSignOut);
+
   // 1. 테마 토글
   themeToggleBtn.addEventListener('click', toggleTheme);
 

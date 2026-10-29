@@ -43,8 +43,25 @@
           </div>
         </div>
 
-        <!-- 우측: DB 연동 상태 & 테마 전환 버튼 (라이트 / 중간 / 다크 3단 전환) -->
+        <!-- 우측: 사용자 정보, DB 연동 상태, 테마 전환 버튼 -->
         <div class="flex items-center gap-2">
+          <!-- 로그인한 사용자 프로필 & 로그아웃 버튼 (로그인 시 동적 노출) -->
+          <div id="userHeaderSection" class="hidden items-center gap-1.5">
+            <span id="userEmailBadge" class="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-semibold bg-brand-50 text-brand-700 border border-brand-200/80 dark:bg-brand-950/40 dark:text-brand-300 dark:border-brand-800/40">
+              <svg class="w-3.5 h-3.5 text-brand-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+              <span id="userEmailText" class="max-w-[130px] truncate">user@email.com</span>
+            </span>
+            <button id="logoutBtn" type="button" title="로그아웃"
+              class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-rose-200 dark:border-rose-900/60 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-xs font-semibold transition">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+              <span class="hidden xs:inline">로그아웃</span>
+            </button>
+          </div>
+
           <!-- Supabase DB 상태 뱃지 -->
           <div id="dbStatusBadge" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200/80 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800/40">
             <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
@@ -73,10 +90,64 @@
     </header>
 
     <!-- 메인 컨텐츠 영역 -->
-    <main class="flex-1 max-w-4xl w-full mx-auto px-4 py-6 sm:px-6 space-y-6">
+    <main class="flex-1 max-w-4xl w-full mx-auto px-4 py-6 sm:px-6 flex flex-col justify-center">
       
-      <!-- 1. 달성률 진행 바 & 요약 카드 -->
-      <section class="bg-white dark:bg-slate-800 rounded-2xl p-5 shadow-sm border border-slate-200/80 dark:border-slate-700/60 transition-colors">
+      <!-- 0. 로그인 / 회원가입 인증 화면 (비로그인 시 노출) -->
+      <section id="authContainer" class="max-w-md w-full mx-auto my-auto py-8">
+        <div class="bg-white dark:bg-slate-800 rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-200/80 dark:border-slate-700/60 transition-colors">
+          <div class="text-center mb-6">
+            <div class="w-12 h-12 rounded-2xl bg-brand-600 text-white flex items-center justify-center mx-auto mb-3 shadow-md shadow-brand-500/20">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <h2 id="authTitle" class="text-xl font-bold text-slate-900 dark:text-white">투두리스트 로그인</h2>
+            <p id="authSubtitle" class="text-xs text-slate-500 dark:text-slate-400 mt-1">로그인하여 나만의 안전한 클라우드 할 일을 관리하세요.</p>
+          </div>
+
+          <!-- 탭: 로그인 / 회원가입 전환 -->
+          <div class="flex rounded-xl bg-slate-100 dark:bg-slate-700/60 p-1 mb-5">
+            <button id="authTabLogin" type="button" class="flex-1 py-1.5 text-xs font-bold rounded-lg transition bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs">
+              로그인
+            </button>
+            <button id="authTabSignup" type="button" class="flex-1 py-1.5 text-xs font-semibold rounded-lg transition text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white">
+              회원가입
+            </button>
+          </div>
+
+          <!-- 알림 메시지 영역 (오류/성공 메시지) -->
+          <div id="authAlert" class="hidden mb-4 p-3 rounded-xl text-xs flex items-start gap-2"></div>
+
+          <!-- 인증 폼 -->
+          <form id="authForm" class="space-y-4">
+            <div>
+              <label for="authEmail" class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">이메일 주소</label>
+              <input type="email" id="authEmail" required autocomplete="email" placeholder="example@email.com"
+                class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+            </div>
+
+            <div>
+              <label for="authPassword" class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">비밀번호</label>
+              <input type="password" id="authPassword" required autocomplete="current-password" placeholder="6자리 이상 비밀번호" minlength="6"
+                class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+            </div>
+
+            <button type="submit" id="authSubmitBtn"
+              class="w-full py-2.5 px-4 bg-brand-600 hover:bg-brand-700 active:bg-brand-800 text-white font-bold text-sm rounded-xl shadow-md shadow-brand-500/20 transition flex items-center justify-center gap-2">
+              <span id="authSubmitBtnText">로그인하기</span>
+            </button>
+          </form>
+
+          <p class="text-[11px] text-center text-slate-400 mt-5 leading-relaxed">
+            Supabase Auth를 통해 비밀번호가 안전하게 암호화되어 관리됩니다.
+          </p>
+        </div>
+      </section>
+
+      <!-- 1. 로그인 후 보이는 메인 할 일 앱 영역 (기본 hidden) -->
+      <div id="todoAppContainer" class="space-y-6 hidden w-full">
+        <!-- 1. 달성률 진행 바 & 요약 카드 -->
+        <section class="bg-white dark:bg-slate-800 rounded-2xl p-5 shadow-sm border border-slate-200/80 dark:border-slate-700/60 transition-colors">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
           <div>
             <h2 class="text-base font-semibold text-slate-900 dark:text-white">오늘의 달성 현황</h2>
@@ -241,6 +312,7 @@
           </div>
         </div>
       </section>
+      </div> <!-- #todoAppContainer 닫기 -->
 
     </main>
 
