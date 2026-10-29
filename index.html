@@ -43,8 +43,14 @@
           </div>
         </div>
 
-        <!-- 테마 전환 버튼 (라이트 / 중간 / 다크 3단 전환) -->
+        <!-- 우측: DB 연동 상태 & 테마 전환 버튼 (라이트 / 중간 / 다크 3단 전환) -->
         <div class="flex items-center gap-2">
+          <!-- Supabase DB 상태 뱃지 -->
+          <div id="dbStatusBadge" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200/80 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800/40">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span class="hidden xs:inline">Supabase</span> 클라우드 연동
+          </div>
+
           <button id="themeToggleBtn" type="button" aria-label="테마 전환"
             class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition">
             <!-- Sun icon (라이트) -->
@@ -240,7 +246,7 @@
 
     <!-- 하단 푸터 -->
     <footer class="py-6 text-center text-xs text-slate-400 border-t border-slate-200/60 dark:border-slate-800">
-      To-Do List • 로컬 브라우저에 자동 안전 저장됩니다.
+      To-Do List • Supabase 클라우드 데이터베이스와 실시간 연동됩니다.
     </footer>
   </div>
 
@@ -336,7 +342,8 @@
     </div>
   </div>
 
-  <!-- 스크립트 연결 -->
+  <!-- Supabase JS Client & 메인 로직 스크립트 연결 -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="app.js"></script>
 </body>
 </html>

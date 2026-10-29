@@ -8,6 +8,19 @@
 const STORAGE_KEY = 'todolist_app_items_v1';
 const THEME_KEY = 'todolist_app_theme';
 
+// Supabase 클라우드 데이터베이스 설정
+const SUPABASE_URL = 'https://dtrkfaaedxgaaupkgelh.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_XAHWlQ2EAjQX_GUgEDo4tg_Ry1emuWW';
+let supabaseClient = null;
+
+try {
+  if (window.supabase) {
+    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  }
+} catch (err) {
+  console.warn('Supabase 초기화 경고:', err);
+}
+
 const defaultTodos = [
   {
     id: 'sample-1',
@@ -128,7 +141,11 @@ function init() {
   initTheme();
   loadTodos();
   setupEventListeners();
+  setupSupabaseRealtime();
   render();
+
+  // 다른 탭이나 창에서 돌아왔을 때 데이터 자동 최신화
+  window.addEventListener('focus', fetchFromSupabase);
 }
 
 // 상단 오늘 날짜 표시
@@ -190,7 +207,37 @@ function toggleTheme() {
   applyTheme(next);
 }
 
-// 로컬 스토리지 로드 / 저장
+// DB 행 <-> 애플리케이션 할 일 객체 변환 헬퍼
+function rowToTodo(row) {
+  return {
+    id: row.id,
+    title: row.title,
+    completed: Boolean(row.completed),
+    dueDate: row.due_date || '',
+    priority: row.priority || 'medium',
+    category: row.category || '기타',
+    notes: row.notes || '',
+    subtasks: Array.isArray(row.subtasks) ? row.subtasks : [],
+    createdAt: row.created_at || new Date().toISOString(),
+    completedAt: row.completed_at || null
+  };
+}
+
+function todoToRow(todo) {
+  return {
+    id: todo.id,
+    title: todo.title,
+    completed: Boolean(todo.completed),
+    due_date: todo.dueDate || null,
+    priority: todo.priority || 'medium',
+    category: todo.category || '기타',
+    notes: todo.notes || '',
+    subtasks: todo.subtasks || [],
+    completed_at: todo.completedAt || null
+  };
+}
+
+// 로컬 스토리지 로드 / 저장 (캐시 역할)
 function loadTodos() {
   const stored = localStorage.getItem(STORAGE_KEY);
   if (stored) {
@@ -201,18 +248,65 @@ function loadTodos() {
     }
   } else {
     todos = [...defaultTodos];
-    saveTodos();
   }
+
+  // Supabase 클라우드 데이터 비동기 동기화
+  fetchFromSupabase();
 }
 
 function saveTodos() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(todos));
 }
 
+// Supabase 클라우드에서 최신 할 일 목록 가져오기
+async function fetchFromSupabase() {
+  if (!supabaseClient) return;
+
+  try {
+    const { data, error } = await supabaseClient
+      .from('todos')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.warn('Supabase 데이터 로드 실패 (로컬 데이터 유지):', error.message);
+      return;
+    }
+
+    if (data && data.length > 0) {
+      todos = data.map(rowToTodo);
+      saveTodos();
+      render();
+    } else if (data && data.length === 0 && todos.length > 0) {
+      // Supabase 테이블이 비어있다면 초기 샘플 데이터를 업로드하여 동기화
+      for (const t of todos) {
+        await supabaseClient.from('todos').upsert([todoToRow(t)]);
+      }
+    }
+  } catch (err) {
+    console.warn('Supabase 동기화 오류:', err);
+  }
+}
+
+// 실시간 구독 (다른 브라우저나 스마트폰에서 변경 시 자동 갱신)
+function setupSupabaseRealtime() {
+  if (!supabaseClient) return;
+  try {
+    supabaseClient
+      .channel('realtime_todos')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'todos' }, () => {
+        fetchFromSupabase();
+      })
+      .subscribe();
+  } catch (e) {
+    console.warn('Realtime subscription not available:', e);
+  }
+}
+
 // --- 핵심 비즈니스 로직 ---
 
 // 새 할 일 등록
-function addTodo(title, dueDate, priority, category) {
+async function addTodo(title, dueDate, priority, category) {
   if (!title.trim()) return;
 
   const newTodo = {
@@ -228,13 +322,24 @@ function addTodo(title, dueDate, priority, category) {
     completedAt: null
   };
 
+  // 즉시 화면 반영 (낙관적 UI 업데이트)
   todos.unshift(newTodo);
   saveTodos();
   render();
+
+  // Supabase 클라우드 저장
+  if (supabaseClient) {
+    try {
+      const { error } = await supabaseClient.from('todos').insert([todoToRow(newTodo)]);
+      if (error) console.error('Supabase 추가 에러:', error);
+    } catch (e) {
+      console.error(e);
+    }
+  }
 }
 
 // 완료 상태 토글 (진행중 <-> 완료 하단 이동)
-function toggleTodoComplete(id) {
+async function toggleTodoComplete(id) {
   const todo = todos.find(t => t.id === id);
   if (!todo) return;
 
@@ -243,17 +348,41 @@ function toggleTodoComplete(id) {
 
   saveTodos();
   render();
+
+  // Supabase 클라우드 업데이트
+  if (supabaseClient) {
+    try {
+      await supabaseClient
+        .from('todos')
+        .update({
+          completed: todo.completed,
+          completed_at: todo.completedAt
+        })
+        .eq('id', id);
+    } catch (e) {
+      console.error(e);
+    }
+  }
 }
 
 // 삭제
-function deleteTodo(id) {
+async function deleteTodo(id) {
   todos = todos.filter(t => t.id !== id);
   saveTodos();
   render();
+
+  // Supabase 클라우드 삭제
+  if (supabaseClient) {
+    try {
+      await supabaseClient.from('todos').delete().eq('id', id);
+    } catch (e) {
+      console.error(e);
+    }
+  }
 }
 
 // 완료된 모든 할 일 비우기
-function clearCompleted() {
+async function clearCompleted() {
   const completedCount = todos.filter(t => t.completed).length;
   if (completedCount === 0) return;
 
@@ -261,6 +390,15 @@ function clearCompleted() {
     todos = todos.filter(t => !t.completed);
     saveTodos();
     render();
+
+    // Supabase 클라우드 완료 항목 삭제
+    if (supabaseClient) {
+      try {
+        await supabaseClient.from('todos').delete().eq('completed', true);
+      } catch (e) {
+        console.error(e);
+      }
+    }
   }
 }
 
@@ -663,7 +801,7 @@ function setupEventListeners() {
   });
 
   // 모달 폼 저장 제출
-  editForm.addEventListener('submit', (e) => {
+  editForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!editingTodoId) return;
 
@@ -678,6 +816,15 @@ function setupEventListeners() {
 
       saveTodos();
       render();
+
+      // Supabase 클라우드 동기화
+      if (supabaseClient) {
+        try {
+          await supabaseClient.from('todos').update(todoToRow(todo)).eq('id', todo.id);
+        } catch (err) {
+          console.error(err);
+        }
+      }
     }
     closeEditModal();
   });
