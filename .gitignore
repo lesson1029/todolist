@@ -1,0 +1,5 @@
+# 환경 변수 및 로컬 설정 파일 (GitHub에 절대 올라가지 않음)
+env.js
+.env
+.env.local
+.env.*.local
