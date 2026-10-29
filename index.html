@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="ko" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>투두리스트 - 할 일 관리</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="h-full bg-slate-50 text-slate-800 dark:bg-slate-900 dark:text-slate-100 transition-colors duration-200">
+  <div class="min-h-full flex flex-col">
+    <!-- 상단 네비게이션 헤더 -->
+    <header class="bg-white/80 dark:bg-slate-800/80 backdrop-blur sticky top-0 z-20 border-b border-slate-200 dark:border-slate-700/60 transition-colors">
+      <div class="max-w-4xl mx-auto px-4 py-3 sm:px-6 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-brand-600 text-white flex items-center justify-center shadow-md shadow-brand-500/20">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <div>
+            <h1 class="text-lg font-bold tracking-tight leading-none text-slate-900 dark:text-white">To Do List</h1>
+            <span id="currentDateText" class="text-xs text-slate-500 dark:text-slate-400">2026년 10월 27일 화요일</span>
+          </div>
+        </div>
+
+        <!-- 테마 전환 버튼 (라이트 / 중간 / 다크 3단 전환) -->
+        <div class="flex items-center gap-2">
+          <button id="themeToggleBtn" type="button" aria-label="테마 전환"
+            class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition">
+            <!-- Sun icon (라이트) -->
+            <svg id="sunIcon" class="w-4 h-4 hidden text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+            </svg>
+            <!-- Half-moon icon (중간 모드) -->
+            <svg id="halfMoonIcon" class="w-4 h-4 hidden text-indigo-500" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <circle cx="12" cy="12" r="9" stroke-width="2"></circle>
+              <path d="M12 3v18c4.97 0 9-4.03 9-9s-4.03-9-9-9z" fill="currentColor"></path>
+            </svg>
+            <!-- Moon icon (다크) -->
+            <svg id="moonIcon" class="w-4 h-4 hidden text-indigo-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+            </svg>
+            <span id="themeLabelText" class="text-xs font-semibold">라이트</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- 메인 컨텐츠 영역 -->
+    <main class="flex-1 max-w-4xl w-full mx-auto px-4 py-6 sm:px-6 space-y-6">
+      
+      <!-- 1. 달성률 진행 바 & 요약 카드 -->
+      <section class="bg-white dark:bg-slate-800 rounded-2xl p-5 shadow-sm border border-slate-200/80 dark:border-slate-700/60 transition-colors">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
+          <div>
+            <h2 class="text-base font-semibold text-slate-900 dark:text-white">오늘의 달성 현황</h2>
+            <p id="progressSubtext" class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">총 0개의 할 일 중 0개 완료</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <span id="progressPercentage" class="text-2xl font-black text-brand-600 dark:text-brand-400">0%</span>
+            <span class="text-xs font-medium text-slate-400 dark:text-slate-500">완료율</span>
+          </div>
+        </div>
+        <div class="w-full bg-slate-100 dark:bg-slate-700 h-3 rounded-full overflow-hidden">
+          <div id="progressBar" class="bg-gradient-to-r from-brand-500 to-indigo-500 h-full rounded-full transition-all duration-500 ease-out" style="width: 0%"></div>
+        </div>
+      </section>
+
+      <!-- 2. 빠른 할 일 등록 카드 -->
+      <section class="bg-white dark:bg-slate-800 rounded-2xl p-5 shadow-sm border border-slate-200/80 dark:border-slate-700/60 transition-colors">
+        <form id="todoForm" class="space-y-3">
+          <div class="flex items-center gap-2">
+            <input type="text" id="todoTitleInput" placeholder="새로운 할 일을 입력하세요... (Enter로 바로 등록)" 
+              required autocomplete="off"
+              class="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/60 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm sm:text-base">
+            <button type="submit" 
+              class="inline-flex items-center gap-1.5 px-4 py-2.5 bg-brand-600 hover:bg-brand-700 active:bg-brand-800 text-white font-medium text-sm rounded-xl shadow-sm transition shrink-0">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4" />
+              </svg>
+              <span>추가</span>
+            </button>
+          </div>
+
+          <!-- 부가 옵션 (마감일, 우선순위, 카테고리) -->
+          <div class="flex flex-wrap items-center gap-2 pt-1 text-xs">
+            <!-- 마감일 -->
+            <div class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-700/60 text-slate-700 dark:text-slate-300">
+              <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              <input type="date" id="todoDueDateInput" class="bg-transparent border-0 focus:outline-none text-xs text-slate-700 dark:text-slate-200 cursor-pointer">
+            </div>
+
+            <!-- 우선순위 -->
+            <div class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-700/60 text-slate-700 dark:text-slate-300">
+              <span class="text-slate-400">우선순위:</span>
+              <select id="todoPriorityInput" class="bg-transparent border-0 focus:outline-none text-xs text-slate-700 dark:text-slate-200 cursor-pointer font-medium">
+                <option value="medium" class="dark:bg-slate-800">보통 🟡</option>
+                <option value="high" class="dark:bg-slate-800">높음 🔴</option>
+                <option value="low" class="dark:bg-slate-800">낮음 🟢</option>
+              </select>
+            </div>
+
+            <!-- 카테고리 태그 -->
+            <div class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-700/60 text-slate-700 dark:text-slate-300">
+              <span class="text-slate-400">분류:</span>
+              <select id="todoCategoryInput" class="bg-transparent border-0 focus:outline-none text-xs text-slate-700 dark:text-slate-200 cursor-pointer font-medium">
+                <option value="업무" class="dark:bg-slate-800">업무 💼</option>
+                <option value="개인" class="dark:bg-slate-800">개인 🏠</option>
+                <option value="공부" class="dark:bg-slate-800">공부 📚</option>
+                <option value="기타" class="dark:bg-slate-800">기타 📌</option>
+              </select>
+            </div>
+          </div>
+        </form>
+      </section>
+
+      <!-- 3. 필터, 정렬 및 검색 툴바 -->
+      <section class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <!-- 상태 & 카테고리 탭 -->
+        <div class="flex items-center gap-1 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
+          <button type="button" data-filter="all" class="filter-tab-btn active px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition">
+            전체
+          </button>
+          <button type="button" data-filter="active" class="filter-tab-btn px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition">
+            진행 중
+          </button>
+          <button type="button" data-filter="completed" class="filter-tab-btn px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition">
+            완료됨
+          </button>
+          <div class="h-4 w-px bg-slate-300 dark:bg-slate-700 mx-1"></div>
+          <!-- 카테고리 필터 -->
+          <select id="categoryFilter" class="px-2.5 py-1.5 rounded-lg text-xs font-medium bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 focus:outline-none">
+            <option value="all">모든 분류</option>
+            <option value="업무">업무</option>
+            <option value="개인">개인</option>
+            <option value="공부">공부</option>
+            <option value="기타">기타</option>
+          </select>
+        </div>
+
+        <!-- 검색창 및 정렬 -->
+        <div class="flex items-center gap-2">
+          <!-- 실시간 검색 -->
+          <div class="relative flex-1 sm:w-48">
+            <svg class="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input type="text" id="searchInput" placeholder="할 일 검색..." 
+              class="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-brand-500">
+          </div>
+
+          <!-- 정렬 셀렉트 -->
+          <select id="sortSelect" class="px-2.5 py-1.5 rounded-lg text-xs font-medium bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 focus:outline-none">
+            <option value="created_desc">등록 최신순</option>
+            <option value="due_asc">마감일 빠른순</option>
+            <option value="priority_desc">우선순위 높은순</option>
+          </select>
+        </div>
+      </section>
+
+      <!-- 4. [진행 중인 할 일] 목록 섹션 -->
+      <section id="activeSection" class="space-y-3">
+        <div class="flex items-center justify-between px-1">
+          <div class="flex items-center gap-2">
+            <h3 class="text-sm font-bold text-slate-800 dark:text-slate-200">진행 중인 할 일</h3>
+            <span id="activeCountBadge" class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-brand-100 text-brand-700 dark:bg-brand-900/50 dark:text-brand-300">0</span>
+          </div>
+        </div>
+
+        <ul id="activeTodoList" class="space-y-2">
+          <!-- 활성 할 일 아이템 템플릿이 스크립트로 렌더링됩니다 -->
+        </ul>
+
+        <!-- 빈 상태 표시 (진행 중 할 일 없을 때) -->
+        <div id="emptyActiveState" class="hidden text-center py-10 bg-white dark:bg-slate-800/50 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700/60">
+          <div class="w-12 h-12 mx-auto rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 mb-2">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <p class="text-sm font-medium text-slate-600 dark:text-slate-300">진행 중인 할 일이 없습니다!</p>
+          <p class="text-xs text-slate-400 mt-1">새로운 할 일을 추가하거나 여유를 즐겨보세요.</p>
+        </div>
+      </section>
+
+      <!-- 5. [완료된 목록] 전용 섹션 (요구사항: 체크 후 아래서 찾을 수 있도록 아코디언 제공) -->
+      <section id="completedSection" class="pt-4 border-t border-slate-200/80 dark:border-slate-700/60 space-y-3">
+        <div class="flex items-center justify-between px-1">
+          <button id="toggleCompletedBtn" type="button" 
+            class="flex items-center gap-2 text-sm font-bold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition group">
+            <svg id="completedChevron" class="w-4 h-4 transform transition-transform duration-200 rotate-90 text-slate-400 group-hover:text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7" />
+            </svg>
+            <span>완료된 목록</span>
+            <span id="completedCountBadge" class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300">0</span>
+          </button>
+
+          <!-- 완료 항목 일괄 비우기 -->
+          <button id="clearCompletedBtn" type="button"
+            class="text-xs text-slate-400 hover:text-rose-500 dark:hover:text-rose-400 font-medium transition hidden">
+            완료 항목 비우기
+          </button>
+        </div>
+
+        <!-- 완료 목록 컨테이너 (접기/펼치기 가능) -->
+        <div id="completedContainer" class="space-y-2">
+          <ul id="completedTodoList" class="space-y-2">
+            <!-- 완료된 할 일 아이템이 여기에 렌더링됩니다 -->
+          </ul>
+
+          <div id="emptyCompletedState" class="text-center py-6 text-xs text-slate-400">
+            아직 완료된 할 일이 없습니다. 할 일을 마치고 체크해 보세요!
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- 하단 푸터 -->
+    <footer class="py-6 text-center text-xs text-slate-400 border-t border-slate-200/60 dark:border-slate-800">
+      To-Do List • 로컬 브라우저에 자동 안전 저장됩니다.
+    </footer>
+  </div>
+
+  <!-- 상세 보기 & 수정 모달 (Detail & Edit Modal) -->
+  <div id="editModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-200">
+    <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 w-full max-w-lg overflow-hidden transform scale-95 transition-transform duration-200">
+      
+      <!-- 모달 헤더 -->
+      <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+        <h3 class="text-base font-bold text-slate-900 dark:text-white">할 일 상세 및 수정</h3>
+        <button id="closeModalBtn" type="button" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded-lg">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <!-- 모달 폼 -->
+      <form id="editForm" class="p-6 space-y-4">
+        <input type="hidden" id="editTodoId">
+
+        <!-- 제목 -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">제목</label>
+          <input type="text" id="editTodoTitle" required 
+            class="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+        </div>
+
+        <!-- 마감일, 우선순위, 카테고리 3열 그리드 -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">마감일</label>
+            <input type="date" id="editTodoDueDate" 
+              class="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white text-xs focus:outline-none focus:ring-2 focus:ring-brand-500">
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">우선순위</label>
+            <select id="editTodoPriority" 
+              class="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white text-xs focus:outline-none focus:ring-2 focus:ring-brand-500">
+              <option value="high">높음 🔴</option>
+              <option value="medium">보통 🟡</option>
+              <option value="low">낮음 🟢</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">카테고리</label>
+            <select id="editTodoCategory" 
+              class="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white text-xs focus:outline-none focus:ring-2 focus:ring-brand-500">
+              <option value="업무">업무 💼</option>
+              <option value="개인">개인 🏠</option>
+              <option value="공부">공부 📚</option>
+              <option value="기타">기타 📌</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- 세부 메모 -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">상세 메모</label>
+          <textarea id="editTodoNotes" rows="3" placeholder="자세한 내용이나 참고 링크 등을 기록하세요..."
+            class="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white text-xs leading-relaxed focus:outline-none focus:ring-2 focus:ring-brand-500 resize-none"></textarea>
+        </div>
+
+        <!-- 하위 체크리스트 (Subtasks) -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">하위 체크리스트</label>
+          <div class="flex gap-2 mb-2">
+            <input type="text" id="newSubtaskInput" placeholder="하위 할 일 추가..."
+              class="flex-1 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white text-xs focus:outline-none focus:ring-1 focus:ring-brand-500">
+            <button type="button" id="addSubtaskBtn" class="px-3 py-1.5 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 text-slate-700 dark:text-slate-200 text-xs font-medium rounded-lg">
+              추가
+            </button>
+          </div>
+          <ul id="modalSubtaskList" class="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+            <!-- 하위 할 일 렌더링 -->
+          </ul>
+        </div>
+
+        <!-- 모달 하단 버튼 -->
+        <div class="pt-3 border-t border-slate-200 dark:border-slate-700 flex items-center justify-end gap-2">
+          <button type="button" id="cancelModalBtn" 
+            class="px-4 py-2 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition">
+            취소
+          </button>
+          <button type="submit" 
+            class="px-5 py-2 text-xs font-semibold text-white bg-brand-600 hover:bg-brand-700 rounded-xl shadow-sm transition">
+            저장하기
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 스크립트 연결 -->
+  <script src="app.js"></script>
+</body>
+</html>
+

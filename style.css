@@ -1,0 +1,213 @@
+/* Custom Styles & Micro-interactions */
+
+/* 기본 폰트 부드러운 렌더링 */
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Pretendard", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 필터 탭 활성 스타일 */
+.filter-tab-btn {
+  background-color: transparent;
+  color: #64748b;
+}
+
+.filter-tab-btn:hover {
+  color: #0f172a;
+}
+
+.dark .filter-tab-btn {
+  color: #94a3b8;
+}
+
+.dark .filter-tab-btn:hover {
+  color: #f8fafc;
+}
+
+.filter-tab-btn.active {
+  background-color: #4f46e5;
+  color: #ffffff !important;
+  box-shadow: 0 1px 3px 0 rgba(79, 70, 229, 0.3);
+}
+
+/* 커스텀 체크박스 */
+.custom-checkbox {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 0.375rem;
+  border: 2px solid #cbd5e1;
+  background-color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  flex-shrink: 0;
+}
+
+.dark .custom-checkbox {
+  border-color: #475569;
+  background-color: #1e293b;
+}
+
+.custom-checkbox:hover {
+  border-color: #6366f1;
+}
+
+.custom-checkbox:checked {
+  background-color: #4f46e5;
+  border-color: #4f46e5;
+}
+
+.custom-checkbox:checked::after {
+  content: "";
+  display: block;
+  width: 0.35rem;
+  height: 0.65rem;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg) translate(-1px, -1px);
+}
+
+/* 할 일 카드 트랜지션 */
+.todo-card {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.todo-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+}
+
+/* 완료된 항목 스타일 */
+.completed-item {
+  opacity: 0.75;
+  background-color: #f8fafc !important;
+}
+
+.dark .completed-item {
+  opacity: 0.7;
+  background-color: #1e293b70 !important;
+}
+
+.completed-item .todo-title {
+  text-decoration: line-through;
+  color: #94a3b8;
+}
+
+.dark .completed-item .todo-title {
+  color: #64748b;
+}
+
+/* 스크롤바 숨기기 유틸 */
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* 마감일 상태 배지 */
+.due-badge-overdue {
+  background-color: #fee2e2;
+  color: #ef4444;
+}
+.dark .due-badge-overdue {
+  background-color: #7f1d1d40;
+  color: #f87171;
+}
+
+.due-badge-today {
+  background-color: #fef3c7;
+  color: #d97706;
+}
+.dark .due-badge-today {
+  background-color: #78350f40;
+  color: #fbbf24;
+}
+
+.due-badge-normal {
+  background-color: #f1f5f9;
+  color: #64748b;
+}
+.dark .due-badge-normal {
+  background-color: #334155;
+  color: #94a3b8;
+}
+
+/* ===================================================
+   중간 모드 (Soft Slate / Medium Mode)
+   라이트 모드의 눈부심과 다크 모드의 어두움을 절충한
+   눈이 편안하고 차분한 소프트 그레이 톤
+   =================================================== */
+html.mid body {
+  background-color: #dbe2ec !important;
+  color: #1e293b !important;
+}
+
+html.mid header {
+  background-color: rgba(241, 245, 249, 0.95) !important;
+  border-color: #cbd5e1 !important;
+}
+
+html.mid section,
+html.mid .todo-card,
+html.mid #editModal > div {
+  background-color: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+}
+
+html.mid .todo-card:hover {
+  background-color: #f8fafc !important;
+}
+
+html.mid input[type="text"],
+html.mid input[type="date"],
+html.mid select,
+html.mid textarea {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+
+html.mid .custom-checkbox {
+  border-color: #94a3b8 !important;
+  background-color: #ffffff !important;
+}
+
+html.mid .custom-checkbox:checked {
+  background-color: #4f46e5 !important;
+  border-color: #4f46e5 !important;
+}
+
+html.mid .completed-item {
+  background-color: #e2e8f0 !important;
+  opacity: 0.8 !important;
+}
+
+html.mid .completed-item .todo-title {
+  color: #64748b !important;
+}
+
+html.mid .filter-tab-btn {
+  color: #475569 !important;
+}
+
+html.mid .filter-tab-btn:hover {
+  color: #0f172a !important;
+}
+
+html.mid .filter-tab-btn.active {
+  background-color: #4f46e5 !important;
+  color: #ffffff !important;
+}
+
+html.mid footer {
+  border-color: #cbd5e1 !important;
+  color: #64748b !important;
+}
+
+
